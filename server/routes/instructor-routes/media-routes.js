@@ -1,6 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs/promises");
+const os = require("os");
 const {
     uploadMediaToCloudinary,
     deleteMediaFromCloudinary,
@@ -10,7 +11,9 @@ const router = express.Router();
 const authenticate = require("../../middleware/auth-middleware");
 
 const upload = multer({
-    dest: "uploads/",
+    // dest: "uploads/",
+    // Vercel functions can write only to their temporary directory.
+    dest: os.tmpdir(),
     limits: { fileSize: 100 * 1024 * 1024 },
 });
 
