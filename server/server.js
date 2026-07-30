@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
+const connectToDatabase = require("./config/database");
 const authRoutes = require("./routes/auth-routes/index");
 const mediaRoutes = require("./routes/instructor-routes/media-routes");
 const instructorCourseRoutes = require("./routes/instructor-routes/course-routes");
@@ -12,7 +12,6 @@ const studentCourseProgressRoutes = require("./routes/student-routes/course-prog
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI;
 
 app.use(
     cors({
@@ -24,11 +23,25 @@ app.use(
 
 app.use(express.json());
 
-//database connection
-mongoose
-    .connect(MONGO_URI)
+// Reuse one connection across serverless invocations and wait for it before a
+// controller runs a Mongoose query. Without this, queries can buffer for 10s
+// during a cold start and fail with a Mongoose buffering timeout.
+connectToDatabase()
     .then(() => console.log("MongoDB is connected"))
-    .catch((e) => console.log(e));
+    .catch((error) => console.error("MongoDB connection failed:", error.message));
+
+app.use(async (req, res, next) => {
+    try {
+        await connectToDatabase();
+        next();
+    } catch (error) {
+        console.error("MongoDB is unavailable:", error.message);
+        res.status(503).json({
+            success: false,
+            message: "Database is temporarily unavailable. Please try again.",
+        });
+    }
+});
 
 //routes configuration
 app.use("/health", (req, res) => {
